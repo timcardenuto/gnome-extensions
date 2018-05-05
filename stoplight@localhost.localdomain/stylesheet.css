@@ -7,3 +7,8 @@
     border-radius: 5px;
     padding: .5em;
 }
+
+.PopupSubMenuMenuItemStyle {
+	margin: 10px;
+	padding-left: 20px;
+}

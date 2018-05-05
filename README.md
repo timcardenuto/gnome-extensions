@@ -4,16 +4,16 @@
 
     sudo yum install python34 python34-pip python34-gobject
     sudo python3 -m pip install gi
-    
+
     sudo gedit gnome-shell-extensions-tool
 	  # change first line to
       #!/usr/bin/python3
 
 
-### Generate your hello-world extension skeleton 
+### Generate your hello-world extension skeleton
 
     $ gnome-shell-extensions-tool --create-extension
-    
+
 	Name should be a very short (ideally descriptive) string.
 	Examples are: "Click To Focus",  "Adblock", "Shell Window Shrinker".
 
@@ -30,7 +30,7 @@
 	need not be an actual email address, though it's a good idea to base the uuid on your
 	email address.  For example, if your email address is janedoe@example.com, you might
 	use an extension title clicktofocus@janedoe.example.com.
-	Uuid [stoplight@localhost.localdomain]: 
+	Uuid [stoplight@localhost.localdomain]:
 
 
 This actually creates the skeleton project directly under `~/.local/share/gnome-shell/extensions`. You'll need to edit it there or copy somewhere and remember to copy back when you want to update the live version.
@@ -44,10 +44,12 @@ Press Alt-F2, and then enter 'r' to reload gnome extensions. You should now see 
 
 
 ### Hack time
+Best documentation I've found for the javascript API - http://devdocs.baznga.org/
+
+Note that "Gjs" stands for Gnome JavaScript and are the required bindings for the base C libraries.
 
 Find more examples of stuff
  * http://mathematicalcoffee.blogspot.com/2012/11/sending-notifications-in-gnome-shell.html
  * https://github.com/hackedbellini/Gnome-Shell-Notifications-Alert
  * https://www.abidibo.net/blog/2016/03/02/how-i-developed-my-first-gnome-shell-extension/
-
-
+ * https://github.com/julio641742/gnome-shell-extension-reference/blob/master/tutorials/POPUPMENU-EXTENSION.md
