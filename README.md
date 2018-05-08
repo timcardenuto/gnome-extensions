@@ -37,7 +37,10 @@ This actually creates the skeleton project directly under `~/.local/share/gnome-
 
 
 ### Enable extension
+For system wide installation do the following:
 
+    sudo cp -r stoplight@localhost.localdomain/ /usr/share/gnome-shell/extensions  
+    sudo cp -r stoplight@localhost.localdomain/icons /usr/share/icons/gnome/16x16/stoplight
     gsettings set org.gnome.shell enabled-extensions "['stoplight@localhost.localdomain']"
 
 Press Alt-F2, and then enter 'r' to reload gnome extensions. You should now see some gears at the top right toolbar, if you click "Hello, world!" will pop up in the center of the screen. Everytime you make code changes you can copy the new files to `~/.local/share/gnome-shell/extensions` if they're not already there, and reload the extensions.
@@ -47,6 +50,10 @@ Press Alt-F2, and then enter 'r' to reload gnome extensions. You should now see 
 Best documentation I've found for the javascript API - http://devdocs.baznga.org/
 
 Note that "Gjs" stands for Gnome JavaScript and are the required bindings for the base C libraries.
+
+Use the following to monitor logging output:
+
+    journalctl -f
 
 Find more examples of stuff
  * http://mathematicalcoffee.blogspot.com/2012/11/sending-notifications-in-gnome-shell.html

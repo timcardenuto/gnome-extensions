@@ -20,6 +20,7 @@ var goodcount = 0;
 var badcount = 0;
 var text = null;
 var button;
+var data = [];
 
 // Class for the button/menu object
 // More examples at https://github.com/julio641742/gnome-shell-extension-reference/blob/master/tutorials/POPUPMENU-EXTENSION.md
@@ -147,6 +148,83 @@ function findSubMenuItem(label, sublabel) {
 	return null;
 }
 
+function parseMessage(msg) {
+	//if (msg.eventId == null || msg.metadata == null || msg.description == null) { break; }
+
+	// add/remove menu items
+	if (msg.eventId == "0") {
+		// nothing special here
+
+	// Good Up
+	} else if (msg.eventId == "1") {
+		goodcount = goodcount + 1;
+		// add new menu item
+		let menuitem = new PopupMenu.PopupImageMenuItem(msg.metadata, 'greenIcon');
+		button.menu.addMenuItem(menuitem);
+		// connect to a pop up that displays more details if you click the menuitem
+		text = new St.Label({ style_class: 'helloworld-label', text: msg.description });
+		menuitem.connect('activate', showPopUp);
+		// delete from inactiveMenu if it's listed there
+		let item = findSubMenuItem("Inactive",msg.metadata);
+		if (item != null) { item.destroy(); }
+
+	// Good Down
+	} else if (msg.eventId == "2") {
+		goodcount = goodcount - 1;
+		// move notification to the storage bin
+		let item = findMenuItem(msg.metadata);
+		if (item != null) { item.destroy(); }
+		let inactiveMenu = findMenuItem("Inactive");
+		let menuitem = new PopupMenu.PopupImageMenuItem(msg.metadata, 'greenIcon');
+		inactiveMenu.menu.addMenuItem(menuitem);
+
+	// Bad Up
+	} else if (msg.eventId == "3") {
+		badcount = badcount + 1;
+		let menuitem = new PopupMenu.PopupImageMenuItem(msg.metadata, 'redIcon');
+		button.menu.addMenuItem(menuitem);
+		let item = findSubMenuItem("Inactive",msg.metadata);
+		if (item != null) { item.destroy(); }
+
+	// Bad Down
+	} else if (msg.eventId == "4") {
+		badcount = badcount - 1;
+		let item = findMenuItem(msg.metadata);
+		if (item != null) { item.destroy(); }
+		let inactiveMenu = findMenuItem("Inactive");
+		let menuitem = new PopupMenu.PopupImageMenuItem(msg.metadata, 'redIcon');
+		inactiveMenu.menu.addMenuItem(menuitem);
+	} else {
+		Main.notify('socketRead()', 'Error: ' + msg.eventId + ' is not a recognized eventId');
+	}
+
+	// update top level status symbol
+	// NOTE the child index changes if you include or delete the icon as part of the button
+	// TODO need a better way to index/search for children based on names or something
+	if (badcount > 0) {
+		state = 2;
+		button.actor.get_first_child().get_child_at_index(0).hide() // greenIcon.svg
+		button.actor.get_first_child().get_child_at_index(1).hide() // yellowIcon.svg
+		button.actor.get_first_child().get_child_at_index(2).show() // redIcon.svg
+		button.actor.get_first_child().get_child_at_index(3).set_text('Bad')
+	} else if (goodcount > 0) {
+		state = 1;
+		button.actor.get_first_child().get_child_at_index(0).show() // greenIcon.svg
+		button.actor.get_first_child().get_child_at_index(1).hide() // yellow.svg
+		button.actor.get_first_child().get_child_at_index(2).hide() // redIcon.svg
+		button.actor.get_first_child().get_child_at_index(3).set_text('Good')
+	} else {
+		state = 0;
+		button.actor.get_first_child().get_child_at_index(0).hide() // greenIcon.svg
+		button.actor.get_first_child().get_child_at_index(1).show() // yellowIcon.svg
+		button.actor.get_first_child().get_child_at_index(2).hide() // redIcon.svg
+		button.actor.get_first_child().get_child_at_index(3).set_text('No Signal')
+	}
+
+	// NOTE this works, but notify does not flush that frequently so you should only use it for *very* infrequent things
+	Main.notify(msg.metadata, msg.description);
+}
+
 // socket callback
 function socketRead(gobject, async_res) {
 	try {
@@ -158,81 +236,8 @@ function socketRead(gobject, async_res) {
 		for (var i=0; i<(splitlineout.length-1); i++) {
 			let msg = JSON.parse(splitlineout[i]);
 			log("Parsing: " + splitlineout[i]);
-
-			//if (msg.eventId == null || msg.metadata == null || msg.description == null) { break; }
-
-			// add/remove menu items
-			if (msg.eventId == "0") {
-				// nothing special here
-
-			// Good Up
-			} else if (msg.eventId == "1") {
-				goodcount = goodcount + 1;
-				// add new menu item
-				let menuitem = new PopupMenu.PopupImageMenuItem(msg.metadata, 'greenIcon');
-				button.menu.addMenuItem(menuitem);
-				// connect to a pop up that displays more details if you click the menuitem
-				text = new St.Label({ style_class: 'helloworld-label', text: msg.description });
-				menuitem.connect('activate', showPopUp);
-				// delete from inactiveMenu if it's listed there
-				let item = findSubMenuItem("Inactive",msg.metadata);
-				if (item != null) { item.destroy(); }
-
-			// Good Down
-			} else if (msg.eventId == "2") {
-				goodcount = goodcount - 1;
-				// move notification to the storage bin
-				let item = findMenuItem(msg.metadata);
-				if (item != null) { item.destroy(); }
-				let inactiveMenu = findMenuItem("Inactive");
-				let menuitem = new PopupMenu.PopupImageMenuItem(msg.metadata, 'greenIcon');
-				inactiveMenu.menu.addMenuItem(menuitem);
-
-			// Bad Up
-			} else if (msg.eventId == "3") {
-				badcount = badcount + 1;
-				let menuitem = new PopupMenu.PopupImageMenuItem(msg.metadata, 'redIcon');
-				button.menu.addMenuItem(menuitem);
-				let item = findSubMenuItem("Inactive",msg.metadata);
-				if (item != null) { item.destroy(); }
-
-			// Bad Down
-			} else if (msg.eventId == "4") {
-				badcount = badcount - 1;
-				let item = findMenuItem(msg.metadata);
-				if (item != null) { item.destroy(); }
-				let inactiveMenu = findMenuItem("Inactive");
-				let menuitem = new PopupMenu.PopupImageMenuItem(msg.metadata, 'redIcon');
-				inactiveMenu.menu.addMenuItem(menuitem);
-			} else {
-				Main.notify('socketRead()', 'Error: ' + msg.eventId + ' is not a recognized eventId');
-			}
-
-			// update top level status symbol
-			// NOTE the child index changes if you include or delete the icon as part of the button
-			// TODO need a better way to index/search for children based on names or something
-			if (badcount > 0) {
-				state = 2;
-				button.actor.get_first_child().get_child_at_index(0).hide() // greenIcon.svg
-				button.actor.get_first_child().get_child_at_index(1).hide() // yellowIcon.svg
-				button.actor.get_first_child().get_child_at_index(2).show() // redIcon.svg
-				button.actor.get_first_child().get_child_at_index(3).set_text('Bad')
-			} else if (goodcount > 0) {
-				state = 1;
-				button.actor.get_first_child().get_child_at_index(0).show() // greenIcon.svg
-				button.actor.get_first_child().get_child_at_index(1).hide() // yellow.svg
-				button.actor.get_first_child().get_child_at_index(2).hide() // redIcon.svg
-				button.actor.get_first_child().get_child_at_index(3).set_text('Good')
-			} else {
-				state = 0;
-				button.actor.get_first_child().get_child_at_index(0).hide() // greenIcon.svg
-				button.actor.get_first_child().get_child_at_index(1).show() // yellowIcon.svg
-				button.actor.get_first_child().get_child_at_index(2).hide() // redIcon.svg
-				button.actor.get_first_child().get_child_at_index(3).set_text('No Signal')
-			}
-
-			// NOTE this works, but notify does not flush that frequently so you should only use it for *very* infrequent things
-			Main.notify(msg.metadata, msg.description);
+			data.push(msg); // store message in array
+			parseMessage(msg);
 		}
 	} catch(err) {
 		Main.notify('socketRead()', 'Error: ' + err);
@@ -290,17 +295,25 @@ function connectTCPSocket() {
 
 // Gnome Extension entry point, constructor()
 function init(extensionMeta) {
-	log('#####################################################################')
+	log('stoplight - #########################################################')
     // adds my 'icons/' folder to the search path
     let theme = Gtk.IconTheme.get_default();
     theme.append_search_path(extensionMeta.path + "/icons");
 }
 
 // documentation says "don't do anything in init(), do it in enable()"
+// NOTE this is executed every time you log in, after screen locks too
 function enable() {
+	log('stoplight - enable()')
     // instantiate button with dropdown menu
     button = new PopupMenuExample;
     Main.panel.addToStatusArea('PopupMenuExample', button, 0, 'right');
+
+	// persistance - if this function being called from screen lock/re-login
+	// read back all the older messages stored in the array 'data'
+	for (var i=0; i<data.length; i++) {
+		parseMessage(data[i]);
+	}
 
     connectUnixSocket();
     //connectTCPSocket();
