@@ -311,6 +311,8 @@ function enable() {
 
 	// persistance - if this function being called from screen lock/re-login
 	// read back all the older messages stored in the array 'data'
+	// TODO prune old messages from 'data' that don't matter,
+	//      ex. only keep latest message per tag
 	for (var i=0; i<data.length; i++) {
 		parseMessage(data[i]);
 	}
