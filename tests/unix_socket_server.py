@@ -3,6 +3,8 @@
 import socket
 import sys
 import os
+import json
+import time
 
 server_address = '/tmp/unix_socket'
 
@@ -13,7 +15,7 @@ except OSError:
 	if os.path.exists(server_address):
 		raise
 
-# Create a UDS socket
+# Create a Unix domain socket
 sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 
 # Bind the socket to the port
@@ -32,26 +34,43 @@ while True:
 
 		while True:
 			try:
-				print >>sys.stderr, 'sending data back to the client'
-				connection.sendall("Hello World!")
+				#data = '{"eventId":"0","description":"words go here","metadata":"blahblah"}'
+				data = json.dumps({'eventId':'0', 'description':'no energy', 'metadata':'nosignal'})
+				print 'sending data: ' + str(json.loads(data))
+				connection.sendall(data)
+				time.sleep(5)
+
+				data = json.dumps({'eventId':'1', 'description':'energy up', 'metadata':'good1'})
+				print 'sending data: ' + str(json.loads(data))
+				connection.sendall(data)
+				time.sleep(2)
+
+				data = json.dumps({'eventId':'3', 'description':'energy up', 'metadata':'bad1'})
+				print 'sending data: ' + str(json.loads(data))
+				connection.sendall(data)
+				time.sleep(2)
+
+				data = json.dumps({'eventId':'3', 'description':'energy up', 'metadata':'bad2'})
+				print 'sending data: ' + str(json.loads(data))
+				connection.sendall(data)
+				time.sleep(2)
+
+				data = json.dumps({'eventId':'2', 'description':'energy down', 'metadata':'good1'})
+				print 'sending data: ' + str(json.loads(data))
+				connection.sendall(data)
+				time.sleep(2)
+
+				data = json.dumps({'eventId':'4', 'description':'energy down', 'metadata':'bad2'})
+				print 'sending data: ' + str(json.loads(data))
+				connection.sendall(data)
+				time.sleep(2)
+
 			except socket.error:
 				print "socket.error"
 				break
+
 			break		# TODO remove this break when ready to test continous data
 			time.sleep(1)
-
-		'''
-		# Receive the data in small chunks and retransmit it
-		while True:
-			data = connection.recv(16)
-			print >>sys.stderr, 'received "%s"' % data
-			if data:
-				print >>sys.stderr, 'sending data back to the client'
-				connection.sendall(data)
-			else:
-				print >>sys.stderr, 'no more data from', client_address
-				break
-		'''
 	finally:
 		# Clean up the connection
 		connection.close()
