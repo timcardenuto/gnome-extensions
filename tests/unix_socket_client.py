@@ -15,20 +15,12 @@ except socket.error, msg:
     print >>sys.stderr, msg
     sys.exit(1)
 
-try:
-    # Send data
-    message = 'This is the message.  It will be repeated.'
-    print >>sys.stderr, 'sending "%s"' % message
-    sock.sendall(message)
+while True:
+    try:
+        data = sock.recv(1024)
+        print 'received ' + str(data)
 
-    amount_received = 0
-    amount_expected = len(message)
-
-    while amount_received < amount_expected:
-        data = sock.recv(16)
-        amount_received += len(data)
-        print >>sys.stderr, 'received "%s"' % data
-
-finally:
-    print >>sys.stderr, 'closing socket'
-    sock.close()
+    except socket.error:
+        print "socket.error"
+        sock.close()
+        break

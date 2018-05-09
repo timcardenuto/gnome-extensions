@@ -22,7 +22,7 @@ tar -zxf %{SOURCE0}
 mkdir -p -m0755 %{buildroot}/usr/share/gnome-shell/extensions
 mkdir -p -m0755 %{buildroot}/usr/share/icons/gnome/16x16/stoplight
 cp -r %{_builddir}/stoplight@localhost.localdomain %{buildroot}/usr/share/gnome-shell/extensions/
-cp -r %{_builddir}/stoplight@localhost.localdomain/icons %{buildroot}/usr/share/icons/gnome/16x16/stoplight
+cp -r %{_builddir}/stoplight@localhost.localdomain/icons/* %{buildroot}/usr/share/icons/gnome/16x16/stoplight/
 
 %clean
 rm -rf %{buildroot}

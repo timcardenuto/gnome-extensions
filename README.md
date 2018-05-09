@@ -71,4 +71,10 @@ To rebuild the RPM from source:
     cp stoplight.spec ~/rpmbuild/SPECS/
     rpmbuild -ba ~/rpmbuild/SPECS/stoplight.spec
     sudo yum install ~/rpmbuild/RPMS/x86_64/stoplight-0.1-1.el7.local.x86_64.rpm
-    
+
+### TODO
+ * remove stale reports from the global array, playback feature will increase in size forever otherwise
+ * button to review all reports, save to a file, open a text editor or something
+ * add timestamp for inactive so you know when it last started-stopped
+ * configure button to type in connection address (unix fd or IP/port)
+ * toggle button tries to reconnect in both states, not setup to actually turn 'off'

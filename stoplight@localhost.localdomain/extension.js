@@ -4,15 +4,16 @@ const St = imports.gi.St;               // create UI elements
 const Clutter = imports.gi.Clutter;     // layout UI elements
 const PopupMenu = imports.ui.popupMenu;
 const PanelMenu = imports.ui.panelMenu;
-const Tweener = imports.ui.tweener;
-const Soup = imports.gi.Soup  // REST and Websocket libraries
 const Gio = imports.gi.Gio;   // sockets
 const Gtk = imports.gi.Gtk;   // needed to add search path for icons/ folder
-const MessageTray = imports.ui.messageTray;
+const Tweener = imports.ui.tweener;
+const Soup = imports.gi.Soup  // REST and Websocket libraries
 
 var unixSocketAddress = '/tmp/unix_socket';
 var tcpSocketAddress = '127.0.0.1';
 var tcpSocketPort = 50000;
+var output_reader;
+
 // Events: 0=No Signal, 1=Good Up, 2=Good Down, 3=Bad Up, 4=Bad Down
 // States: 0=Not Sure (no signal), 1=Good, 2=Bad
 var state = 0;
@@ -21,6 +22,7 @@ var badcount = 0;
 var text = null;
 var button;
 var data = [];
+
 
 // Class for the button/menu object
 // More examples at https://github.com/julio641742/gnome-shell-extension-reference/blob/master/tutorials/POPUPMENU-EXTENSION.md
@@ -90,7 +92,6 @@ const PopupMenuExample = new Lang.Class({
             // show submenu
 			//inactiveMenu.setSubmenuShown(true);
 		}));
-
 	},
 
 	//	destroy the button
@@ -148,111 +149,173 @@ function findSubMenuItem(label, sublabel) {
 	return null;
 }
 
+
 function parseMessage(msg) {
-	//if (msg.eventId == null || msg.metadata == null || msg.description == null) { break; }
+	try {
+		// add/remove menu items
+		if (msg.eventId == "0") {
+			// nothing special here
 
-	// add/remove menu items
-	if (msg.eventId == "0") {
-		// nothing special here
+		// Good Up
+		} else if (msg.eventId == "1") {
+			goodcount = goodcount + 1;
+			// add new menu item
+			let menuitem = new PopupMenu.PopupImageMenuItem(msg.metadata, 'greenIcon');
+			button.menu.addMenuItem(menuitem);
+			// connect to a pop up that displays more details if you click the menuitem
+			text = new St.Label({ style_class: 'helloworld-label', text: msg.description });
+			menuitem.connect('activate', showPopUp);
+			// delete from inactiveMenu if it's listed there
+			let item = findSubMenuItem("Inactive",msg.metadata);
+			if (item != null) { item.destroy(); }
 
-	// Good Up
-	} else if (msg.eventId == "1") {
-		goodcount = goodcount + 1;
-		// add new menu item
-		let menuitem = new PopupMenu.PopupImageMenuItem(msg.metadata, 'greenIcon');
-		button.menu.addMenuItem(menuitem);
-		// connect to a pop up that displays more details if you click the menuitem
-		text = new St.Label({ style_class: 'helloworld-label', text: msg.description });
-		menuitem.connect('activate', showPopUp);
-		// delete from inactiveMenu if it's listed there
-		let item = findSubMenuItem("Inactive",msg.metadata);
-		if (item != null) { item.destroy(); }
+		// Good Down
+		} else if (msg.eventId == "2") {
+			goodcount = goodcount - 1;
+			// move notification to the storage bin
+			let item = findMenuItem(msg.metadata);
+			if (item != null) { item.destroy(); }
+			let inactiveMenu = findMenuItem("Inactive");
+			let menuitem = new PopupMenu.PopupImageMenuItem(msg.metadata, 'greenIcon');
+			inactiveMenu.menu.addMenuItem(menuitem);
 
-	// Good Down
-	} else if (msg.eventId == "2") {
-		goodcount = goodcount - 1;
-		// move notification to the storage bin
-		let item = findMenuItem(msg.metadata);
-		if (item != null) { item.destroy(); }
-		let inactiveMenu = findMenuItem("Inactive");
-		let menuitem = new PopupMenu.PopupImageMenuItem(msg.metadata, 'greenIcon');
-		inactiveMenu.menu.addMenuItem(menuitem);
+		// Bad Up
+		} else if (msg.eventId == "3") {
+			badcount = badcount + 1;
+			let menuitem = new PopupMenu.PopupImageMenuItem(msg.metadata, 'redIcon');
+			button.menu.addMenuItem(menuitem);
+			let item = findSubMenuItem("Inactive",msg.metadata);
+			if (item != null) { item.destroy(); }
 
-	// Bad Up
-	} else if (msg.eventId == "3") {
-		badcount = badcount + 1;
-		let menuitem = new PopupMenu.PopupImageMenuItem(msg.metadata, 'redIcon');
-		button.menu.addMenuItem(menuitem);
-		let item = findSubMenuItem("Inactive",msg.metadata);
-		if (item != null) { item.destroy(); }
+		// Bad Down
+		} else if (msg.eventId == "4") {
+			badcount = badcount - 1;
+			let item = findMenuItem(msg.metadata);
+			if (item != null) { item.destroy(); }
+			let inactiveMenu = findMenuItem("Inactive");
+			let menuitem = new PopupMenu.PopupImageMenuItem(msg.metadata, 'redIcon');
+			inactiveMenu.menu.addMenuItem(menuitem);
+		} else {
+			Main.notify('socketRead()', 'Error: ' + msg.eventId + ' is not a recognized eventId');
+		}
 
-	// Bad Down
-	} else if (msg.eventId == "4") {
-		badcount = badcount - 1;
-		let item = findMenuItem(msg.metadata);
-		if (item != null) { item.destroy(); }
-		let inactiveMenu = findMenuItem("Inactive");
-		let menuitem = new PopupMenu.PopupImageMenuItem(msg.metadata, 'redIcon');
-		inactiveMenu.menu.addMenuItem(menuitem);
-	} else {
-		Main.notify('socketRead()', 'Error: ' + msg.eventId + ' is not a recognized eventId');
+		// update top level status symbol
+		// NOTE the child index changes if you include or delete the icon as part of the button
+		// TODO need a better way to index/search for children based on names or something
+		if (badcount > 0) {
+			state = 2;
+			button.actor.get_first_child().get_child_at_index(0).hide() // greenIcon.svg
+			button.actor.get_first_child().get_child_at_index(1).hide() // yellowIcon.svg
+			button.actor.get_first_child().get_child_at_index(2).show() // redIcon.svg
+			button.actor.get_first_child().get_child_at_index(3).set_text('Bad')
+		} else if (goodcount > 0) {
+			state = 1;
+			button.actor.get_first_child().get_child_at_index(0).show() // greenIcon.svg
+			button.actor.get_first_child().get_child_at_index(1).hide() // yellow.svg
+			button.actor.get_first_child().get_child_at_index(2).hide() // redIcon.svg
+			button.actor.get_first_child().get_child_at_index(3).set_text('Good')
+		} else {
+			state = 0;
+			button.actor.get_first_child().get_child_at_index(0).hide() // greenIcon.svg
+			button.actor.get_first_child().get_child_at_index(1).show() // yellowIcon.svg
+			button.actor.get_first_child().get_child_at_index(2).hide() // redIcon.svg
+			button.actor.get_first_child().get_child_at_index(3).set_text('No Signal')
+		}
+
+		// NOTE this works, but notify does not flush that frequently so you should only use it for *very* infrequent things
+		Main.notify(msg.metadata, msg.description);
+
+	} catch(err) {
+		Main.notify('parseMessage()', 'Error: ' + err);
+		log("parseMessage() Error: " + err);
 	}
-
-	// update top level status symbol
-	// NOTE the child index changes if you include or delete the icon as part of the button
-	// TODO need a better way to index/search for children based on names or something
-	if (badcount > 0) {
-		state = 2;
-		button.actor.get_first_child().get_child_at_index(0).hide() // greenIcon.svg
-		button.actor.get_first_child().get_child_at_index(1).hide() // yellowIcon.svg
-		button.actor.get_first_child().get_child_at_index(2).show() // redIcon.svg
-		button.actor.get_first_child().get_child_at_index(3).set_text('Bad')
-	} else if (goodcount > 0) {
-		state = 1;
-		button.actor.get_first_child().get_child_at_index(0).show() // greenIcon.svg
-		button.actor.get_first_child().get_child_at_index(1).hide() // yellow.svg
-		button.actor.get_first_child().get_child_at_index(2).hide() // redIcon.svg
-		button.actor.get_first_child().get_child_at_index(3).set_text('Good')
-	} else {
-		state = 0;
-		button.actor.get_first_child().get_child_at_index(0).hide() // greenIcon.svg
-		button.actor.get_first_child().get_child_at_index(1).show() // yellowIcon.svg
-		button.actor.get_first_child().get_child_at_index(2).hide() // redIcon.svg
-		button.actor.get_first_child().get_child_at_index(3).set_text('No Signal')
-	}
-
-	// NOTE this works, but notify does not flush that frequently so you should only use it for *very* infrequent things
-	Main.notify(msg.metadata, msg.description);
 }
 
-// socket callback
-function socketRead(gobject, async_res) {
-	try {
-		let [lineout, charlength, error] = gobject.read_line_finish(async_res);
-		log("Raw line from socket: " + lineout);
-		let newlineout = lineout.toString().replace(/}/gi, "}/");
-		let splitlineout = newlineout.split('/');
 
-		for (var i=0; i<(splitlineout.length-1); i++) {
-			let msg = JSON.parse(splitlineout[i]);
-			log("Parsing: " + splitlineout[i]);
-			data.push(msg); // store message in array
-			parseMessage(msg);
-		}
+// helper function to handle socket issues
+function handleSocketError(func,err) {
+	Main.notify(func, 'Error: ' + err);
+	log(func + " Error: " + err);
+	let connectionMenu = findMenuItem('Connection');
+	if (connectionMenu != null) { connectionMenu.setToggleState(0); }
+	button.actor.get_first_child().get_child_at_index(3).set_text('No Connection')
+}
+
+
+// socket callback
+// NOTE be careful with sockets! I've crashed Gnome a bunch of times trying to
+//      figure out how to use get read_upto_async() right.
+function socketRead(gobject, async_res) {
+	log('>socketRead()');
+	try {
+
+		let [str, len] = gobject.read_upto_finish(async_res);
+		log("Raw socket return: " + str);
+		if (str == null) { throw "socket read returned null"; }
+
+		// have to add the delimiter back that we use to parse socket data
+		let jsonStr = str+'}';
+		log("Parsing: "+jsonStr);
+		let jsonMsg = JSON.parse(jsonStr);
+
+		// store message in array, useful when connection restored to restore history
+		data.push(jsonMsg);
+
+		// now that we finally have the data! this function does logic for UI
+		parseMessage(jsonMsg);
+
+		// NOTE Remove stop char from socket buffer, documentation isn't clear about
+		// this, but you HAVE to read this out everytime to keep calling the socket
+		let stopChar = output_reader.read_byte(null);
+		log("Stop byte: " + stopChar);
+
+		// call socket read for next message
+		output_reader.read_upto_async('}',1, 0, null, socketRead);
+
 	} catch(err) {
-		Main.notify('socketRead()', 'Error: ' + err);
+		handleSocketError('socketRead()',err);
 	}
 }
 
 // connect to [existing] Unix Socket
 // NOTE this will fail with connection refused if there isn't a server listening
+// NOTE this uses a TCP stream connection, doesn't seem support AF_UNIX, SOCK_DGRAM pair
 function connectUnixSocket() {
 	try {
-		let sockClient, sockAddr, sockConnection, output_reader;
-
+		let sockClient, sockAddr, sockConnection;
 		sockClient = new Gio.SocketClient();
 		sockAddr = Gio.UnixSocketAddress.new(unixSocketAddress);
 		sockConnection = sockClient.connect(sockAddr, null);
+
+		let connectionMenu = findMenuItem('Connection');
+		if (connectionMenu != null) { connectionMenu.setToggleState(1); }
+		Main.notify('UnixSocket', 'connected');
+
+		// read server socket, use '}' as delimiter
+		output_reader = new Gio.DataInputStream({ base_stream: sockConnection.get_input_stream() });
+		output_reader.read_upto_async('}',1, 0, null, socketRead);
+
+	} catch(err) {
+		handleSocketError('connectUnixSocket()',err);
+	}
+}
+
+// for a server implementation
+// NOTE this isn't working, started on it but didn't finish
+function connectUnixSocketServer() {
+	try {
+		let sock, newsock, sockAddr, sockConnection;
+
+		sock = new Gio.Socket(1,1,6);
+		log(sock.family);
+		log(sock.type);
+		log(sock.protocol);
+		sockAddr = Gio.UnixSocketAddress.new(unixSocketAddress);
+
+		sock.bind(sockAddr,true);
+		sock.listen();
+		newsock = sock.accept(null);
+
 
 		let connectionMenu = findMenuItem('Connection');
 		if (connectionMenu != null) { connectionMenu.setToggleState(1); }
@@ -263,10 +326,7 @@ function connectUnixSocket() {
 		output_reader.read_line_async(0, null, socketRead);
 
 	} catch(err) {
-		Main.notify('UnixSocket', 'Error: ' + err);
-		let connectionMenu = findMenuItem('Connection');
-		if (connectionMenu != null) { connectionMenu.setToggleState(0); }
-		button.actor.get_first_child().get_child_at_index(3).set_text('No Connection')
+		handleSocketError('connectUnixSocketClient()',err);
 	}
 }
 
@@ -274,7 +334,7 @@ function connectUnixSocket() {
 // NOTE this will fail with connection refused if there isn't a server listening
 function connectTCPSocket() {
   try {
-    let sockClient, output_reader;
+    let sockClient, sockConnection;
 
     sockClient = new Gio.SocketClient();
     sockConnection = sockClient.connect_to_host(tcpSocketAddress, tcpSocketPort, null);
@@ -285,10 +345,7 @@ function connectTCPSocket() {
     output_reader.read_line_async(0, null, socketRead);
 
   } catch(err) {
-    Main.notify('TCPSocket', 'Error: ' + err);
-	let connectionMenu = findMenuItem('Connection');
-	if (connectionMenu != null) { connectionMenu.setToggleState(0); }
-	button.actor.get_first_child().get_child_at_index(3).set_text('No Connection')
+	  handleSocketError('connectTCPSocket()',err);
   }
 }
 
@@ -328,8 +385,9 @@ function disable() {
     button.destroy();
 }
 
-
+//-----------------------------------------------------------------------------
 //--REST/Websocket stuff-------------------------------------------------------
+//-----------------------------------------------------------------------------
 /*
 function connectREST() {
 /*  // GET example
