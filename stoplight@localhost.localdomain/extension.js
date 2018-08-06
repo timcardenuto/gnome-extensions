@@ -340,7 +340,7 @@ function socketReadCallback(gobject, async_res) {
 		// write messages to log file
 		var fh = Gio.file_new_for_path('/tmp/stoplight.log')
 		var fstream = fh.append_to(Gio.FileCreateFlags.NONE, null);
-		fstream.write(jsonStr+"\n", null);
+		fstream.write(JSON.stringify(jsonMsg)+"\n", null);
 
 		// now that we finally have the data! this function does logic for UI
 		parseMessage(jsonMsg);

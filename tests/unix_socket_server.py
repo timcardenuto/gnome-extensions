@@ -28,12 +28,12 @@ sock.listen(1)
 
 # data msg's to play out
 #'''
-datas = [json.dumps({'eventId':'0', 'description':'no energy', 'metadata':'nosignal'}),
-			json.dumps({'eventId':'1', 'description':'energy up', 'metadata':'good1'}),
-			json.dumps({'eventId':'3', 'description':'energy up', 'metadata':'bad1'}),
-			json.dumps({'eventId':'3', 'description':'energy up', 'metadata':'bad2'}),
-			json.dumps({'eventId':'2', 'description':'energy down', 'metadata':'good1'}),
-			json.dumps({'eventId':'4', 'description':'energy down', 'metadata':'bad2'})]
+datas = [json.dumps({'localTime':time.time(), 'eventId':'0', 'description':'no energy', 'metadata':'nosignal'}),
+			json.dumps({'localTime':time.time(), 'eventId':'1', 'description':'energy up', 'metadata':'good1'}),
+			json.dumps({'localTime':time.time(), 'eventId':'3', 'description':'energy up', 'metadata':'bad1'}),
+			json.dumps({'localTime':time.time(), 'eventId':'3', 'description':'energy up', 'metadata':'bad2'}),
+			json.dumps({'localTime':time.time(), 'eventId':'2', 'description':'energy down', 'metadata':'good1'}),
+			json.dumps({'localTime':time.time(), 'eventId':'4', 'description':'energy down', 'metadata':'bad2'})]
 
 ''' # newline version
 datas = [(json.dumps({'eventId':'0', 'description':'no energy', 'metadata':'nosignal'})+'\n'),
